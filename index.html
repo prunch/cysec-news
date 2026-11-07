@@ -69,15 +69,39 @@
             margin: 0 auto;
             padding: 1.5rem;
         }
-        .generator {
+        .meter, .generator {
             border: 1px solid var(--border);
             padding: 1.25rem;
-            margin-bottom: 2rem;
+            margin-bottom: 1.5rem;
         }
-        .generator h2 {
+        .meter h2, .generator h2 {
             font-size: 1rem;
             font-weight: 600;
             margin-bottom: 0.75rem;
+        }
+        .meter-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            margin-bottom: 0.5rem;
+            font-size: 0.875rem;
+        }
+        .meter-bar {
+            height: 8px;
+            background: #f0f0f0;
+            border: 1px solid var(--border);
+            position: relative;
+        }
+        .meter-fill {
+            height: 100%;
+            background: #111;
+            width: 0%;
+            transition: width 0.4s ease;
+        }
+        .meter-note {
+            font-size: 0.75rem;
+            color: var(--muted);
+            margin-top: 0.4rem;
         }
         .gen-row {
             display: flex;
@@ -183,6 +207,18 @@
     </header>
 
     <main>
+        <section class="meter">
+            <h2>Weekly Vulnerabilities</h2>
+            <div class="meter-row">
+                <span id="meter-label">This week</span>
+                <span id="meter-count">—</span>
+            </div>
+            <div class="meter-bar">
+                <div class="meter-fill" id="meter-fill"></div>
+            </div>
+            <div class="meter-note">Count of vulnerability-related posts in the current feed (updated daily).</div>
+        </section>
+
         <section class="generator">
             <h2>Password Generator</h2>
             <div class="gen-row">
@@ -214,17 +250,13 @@
 
     <script>
         // --- Password Generator ---
-        // Assumption: 10^12 guesses per second (aggressive current offline GPU rate for fast hashes)
         const GUESSES_PER_SECOND = 1e12;
         const SECONDS_PER_YEAR = 365.25 * 24 * 3600;
         const CHARSET = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()-_=+[]{}|;:,.<>?';
 
         function entropyNeeded(years) {
-            // Average time = 2^(entropy-1) / rate
-            // Want average time >= years
             const totalSeconds = years * SECONDS_PER_YEAR;
             const requiredGuesses = totalSeconds * GUESSES_PER_SECOND;
-            // entropy such that 2^(e-1) >= requiredGuesses
             return Math.log2(requiredGuesses) + 1;
         }
 
@@ -232,7 +264,7 @@
             const needed = entropyNeeded(targetYears);
             const bitsPerChar = Math.log2(CHARSET.length);
             let length = Math.ceil(needed / bitsPerChar);
-            length = Math.max(length, 12); // minimum sensible length
+            length = Math.max(length, 12);
 
             const array = new Uint32Array(length);
             crypto.getRandomValues(array);
@@ -267,19 +299,34 @@
             });
         });
 
-        // Generate one on load
         document.getElementById('generate').click();
 
-        // --- Feed ---
+        // --- Feed + Meter ---
         let posts = [];
         let currentFilter = 'all';
         let filteredPosts = [];
+
+        function isVulnerability(post) {
+            if (post.category === 'vulnerability') return true;
+            const text = (post.content || '').toLowerCase();
+            return /cve-|vulnerability|exploit|rce|zero.?day|0.?day|actively exploited/.test(text);
+        }
+
+        function updateMeter() {
+            const vulns = posts.filter(isVulnerability);
+            const count = vulns.length;
+            // Soft scale: 0–20 posts fills the bar; more still shows full
+            const pct = Math.min(100, (count / 20) * 100);
+            document.getElementById('meter-count').textContent = count;
+            document.getElementById('meter-fill').style.width = pct + '%';
+        }
 
         async function loadPosts() {
             try {
                 const res = await fetch('posts.json');
                 posts = await res.json();
                 filteredPosts = [...posts];
+                updateMeter();
                 renderFeed();
             } catch (e) {
                 document.getElementById('feed').innerHTML = '<div class="empty">Unable to load posts.</div>';
