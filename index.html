@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cysec News</title>
+    <style>
+        :root {
+            --bg: #ffffff;
+            --text: #111111;
+            --muted: #666666;
+            --border: #e0e0e0;
+            --critical: #b91c1c;
+            --high: #c2410c;
+            --medium: #1d4ed8;
+            --info: #047857;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.5;
+            font-size: 15px;
+        }
+        header {
+            border-bottom: 1px solid var(--border);
+            padding: 1rem 1.5rem;
+        }
+        .header-inner {
+            max-width: 900px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+        h1 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            letter-spacing: -0.01em;
+        }
+        .controls {
+            display: flex;
+            gap: 0.75rem;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        input, select {
+            font-family: inherit;
+            font-size: 0.875rem;
+            padding: 0.4rem 0.6rem;
+            border: 1px solid var(--border);
+            background: #fff;
+            color: var(--text);
+            border-radius: 2px;
+        }
+        input:focus, select:focus { outline: 1px solid #000; }
+        main {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 1.5rem;
+        }
+        .filters {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            font-size: 0.875rem;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 0.75rem;
+        }
+        .filters a {
+            color: var(--muted);
+            text-decoration: none;
+            cursor: pointer;
+        }
+        .filters a.active, .filters a:hover {
+            color: var(--text);
+            font-weight: 500;
+        }
+        .post {
+            border-bottom: 1px solid var(--border);
+            padding: 1.25rem 0;
+        }
+        .post:last-child { border-bottom: none; }
+        .post-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            margin-bottom: 0.4rem;
+            font-size: 0.875rem;
+        }
+        .author { font-weight: 500; }
+        .meta { color: var(--muted); }
+        .severity {
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+        .severity.critical { color: var(--critical); }
+        .severity.high { color: var(--high); }
+        .severity.medium { color: var(--medium); }
+        .severity.info { color: var(--info); }
+        .content { margin: 0.5rem 0 0.75rem; white-space: pre-wrap; }
+        .tags { font-size: 0.8rem; color: var(--muted); }
+        .tags span { margin-right: 0.75rem; }
+        .engagement { font-size: 0.8rem; color: var(--muted); margin-top: 0.5rem; }
+        .empty { color: var(--muted); padding: 2rem 0; text-align: center; }
+        footer {
+            max-width: 900px;
+            margin: 2rem auto 1rem;
+            padding: 0 1.5rem;
+            font-size: 0.8rem;
+            color: var(--muted);
+            border-top: 1px solid var(--border);
+            padding-top: 1rem;
+        }
+        @media (max-width: 640px) {
+            .header-inner { flex-direction: column; align-items: flex-start; }
+            .post-header { flex-direction: column; gap: 0.25rem; }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="header-inner">
+            <h1>Cysec News</h1>
+            <div class="controls">
+                <input type="text" id="search" placeholder="Search">
+                <select id="sort">
+                    <option value="newest">Newest</option>
+                    <option value="engagement">Engagement</option>
+                    <option value="severity">Severity</option>
+                </select>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <nav class="filters">
+            <a class="active" data-filter="all">All</a>
+            <a data-filter="vulnerability">Vulnerabilities</a>
+            <a data-filter="breach">Breaches</a>
+            <a data-filter="ransomware">Ransomware</a>
+            <a data-filter="ai">AI</a>
+            <a data-filter="advisory">Advisories</a>
+        </nav>
+        <div id="feed"></div>
+    </main>
+
+    <footer>
+        Cysec News · cysec.news<br>
+        Aggregated from public posts on X. Verify from primary sources.
+    </footer>
+
+    <script>
+        let posts = [];
+        let currentFilter = 'all';
+        let filteredPosts = [];
+
+        async function loadPosts() {
+            try {
+                const res = await fetch('posts.json');
+                posts = await res.json();
+                filteredPosts = [...posts];
+                renderFeed();
+            } catch (e) {
+                document.getElementById('feed').innerHTML = '<div class="empty">Unable to load posts.</div>';
+            }
+        }
+
+        function renderFeed() {
+            const feed = document.getElementById('feed');
+            const searchTerm = document.getElementById('search').value.toLowerCase();
+            
+            let display = filteredPosts.filter(p => 
+                p.content.toLowerCase().includes(searchTerm) ||
+                p.author.toLowerCase().includes(searchTerm) ||
+                (p.tags && p.tags.some(t => t.toLowerCase().includes(searchTerm)))
+            );
+
+            const sort = document.getElementById('sort').value;
+            if (sort === 'engagement') {
+                display.sort((a, b) => ((b.likes || 0) + (b.reposts || 0)) - ((a.likes || 0) + (a.reposts || 0)));
+            } else if (sort === 'severity') {
+                const order = { critical: 0, high: 1, medium: 2, info: 3 };
+                display.sort((a, b) => (order[a.severity] || 9) - (order[b.severity] || 9));
+            }
+
+            if (display.length === 0) {
+                feed.innerHTML = '<div class="empty">No matching posts.</div>';
+                return;
+            }
+
+            feed.innerHTML = display.map(post => `
+                <article class="post">
+                    <div class="post-header">
+                        <div>
+                            <span class="author">${post.author || ''}</span>
+                            <span class="meta"> ${post.handle || ''} · ${post.time || ''}</span>
+                        </div>
+                        <span class="severity ${post.severity || 'info'}">${post.severity || 'info'}</span>
+                    </div>
+                    <div class="content">${post.content || ''}</div>
+                    <div class="tags">
+                        ${(post.tags || []).map(t => `<span>#${t}</span>`).join('')}
+                    </div>
+                    <div class="engagement">
+                        ${post.likes || 0} likes · ${post.reposts || 0} reposts
+                        ${post.link && post.link !== '#' ? ` · <a href="${post.link}" target="_blank" style="color: inherit;">source</a>` : ''}
+                    </div>
+                </article>
+            `).join('');
+        }
+
+        document.querySelectorAll('.filters a').forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                document.querySelectorAll('.filters a').forEach(l => l.classList.remove('active'));
+                link.classList.add('active');
+                currentFilter = link.dataset.filter;
+                filteredPosts = currentFilter === 'all' 
+                    ? [...posts] 
+                    : posts.filter(p => p.category === currentFilter || (p.tags && p.tags.includes(currentFilter)));
+                renderFeed();
+            });
+        });
+
+        document.getElementById('search').addEventListener('input', renderFeed);
+        document.getElementById('sort').addEventListener('change', renderFeed);
+
+        loadPosts();
+    </script>
+</body>
+</html>
