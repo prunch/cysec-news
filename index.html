@@ -47,7 +47,7 @@
             align-items: center;
             flex-wrap: wrap;
         }
-        input, select {
+        input, select, button {
             font-family: inherit;
             font-size: 0.875rem;
             padding: 0.4rem 0.6rem;
@@ -57,10 +57,54 @@
             border-radius: 2px;
         }
         input:focus, select:focus { outline: 1px solid #000; }
+        button {
+            cursor: pointer;
+            background: #000;
+            color: #fff;
+            border-color: #000;
+        }
+        button:hover { background: #333; }
         main {
             max-width: 900px;
             margin: 0 auto;
             padding: 1.5rem;
+        }
+        .generator {
+            border: 1px solid var(--border);
+            padding: 1.25rem;
+            margin-bottom: 2rem;
+        }
+        .generator h2 {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 0.75rem;
+        }
+        .gen-row {
+            display: flex;
+            gap: 0.75rem;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-bottom: 0.75rem;
+        }
+        .gen-row label {
+            font-size: 0.875rem;
+            color: var(--muted);
+        }
+        #years {
+            width: 80px;
+        }
+        #password-output {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+            font-size: 0.95rem;
+            padding: 0.6rem;
+            border: 1px solid var(--border);
+            background: #fafafa;
+            word-break: break-all;
+            margin: 0.5rem 0;
+        }
+        .gen-meta {
+            font-size: 0.8rem;
+            color: var(--muted);
         }
         .filters {
             display: flex;
@@ -139,6 +183,18 @@
     </header>
 
     <main>
+        <section class="generator">
+            <h2>Password Generator</h2>
+            <div class="gen-row">
+                <label for="years">Years to crack:</label>
+                <input type="number" id="years" value="40" min="1" max="10000">
+                <button id="generate">Generate</button>
+                <button id="copy" style="background:#fff;color:#000;border:1px solid var(--border);">Copy</button>
+            </div>
+            <div id="password-output"></div>
+            <div class="gen-meta" id="gen-meta"></div>
+        </section>
+
         <nav class="filters">
             <a class="active" data-filter="all">All</a>
             <a data-filter="vulnerability">Vulnerabilities</a>
@@ -152,10 +208,69 @@
 
     <footer>
         Cysec News · cysec.news<br>
-        Aggregated from public posts on X. Verify from primary sources.
+        Aggregated from public posts on X. Verify from primary sources.<br>
+        Password estimates assume offline GPU cracking of a fast hash (~10<sup>12</sup> guesses/sec). Real-world times vary with hashing algorithm and hardware.
     </footer>
 
     <script>
+        // --- Password Generator ---
+        // Assumption: 10^12 guesses per second (aggressive current offline GPU rate for fast hashes)
+        const GUESSES_PER_SECOND = 1e12;
+        const SECONDS_PER_YEAR = 365.25 * 24 * 3600;
+        const CHARSET = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()-_=+[]{}|;:,.<>?';
+
+        function entropyNeeded(years) {
+            // Average time = 2^(entropy-1) / rate
+            // Want average time >= years
+            const totalSeconds = years * SECONDS_PER_YEAR;
+            const requiredGuesses = totalSeconds * GUESSES_PER_SECOND;
+            // entropy such that 2^(e-1) >= requiredGuesses
+            return Math.log2(requiredGuesses) + 1;
+        }
+
+        function generatePassword(targetYears) {
+            const needed = entropyNeeded(targetYears);
+            const bitsPerChar = Math.log2(CHARSET.length);
+            let length = Math.ceil(needed / bitsPerChar);
+            length = Math.max(length, 12); // minimum sensible length
+
+            const array = new Uint32Array(length);
+            crypto.getRandomValues(array);
+            let password = '';
+            for (let i = 0; i < length; i++) {
+                password += CHARSET[array[i] % CHARSET.length];
+            }
+
+            const actualEntropy = length * bitsPerChar;
+            const avgSeconds = Math.pow(2, actualEntropy - 1) / GUESSES_PER_SECOND;
+            const avgYears = avgSeconds / SECONDS_PER_YEAR;
+
+            return { password, length, entropy: actualEntropy, years: avgYears };
+        }
+
+        document.getElementById('generate').addEventListener('click', () => {
+            const years = Math.max(1, parseInt(document.getElementById('years').value) || 40);
+            const result = generatePassword(years);
+            document.getElementById('password-output').textContent = result.password;
+            document.getElementById('gen-meta').innerHTML =
+                `Length: ${result.length} · Entropy: ${result.entropy.toFixed(1)} bits · Estimated: ~${Math.round(result.years).toLocaleString()} years`;
+        });
+
+        document.getElementById('copy').addEventListener('click', () => {
+            const pw = document.getElementById('password-output').textContent;
+            if (!pw) return;
+            navigator.clipboard.writeText(pw).then(() => {
+                const btn = document.getElementById('copy');
+                const orig = btn.textContent;
+                btn.textContent = 'Copied';
+                setTimeout(() => btn.textContent = orig, 1200);
+            });
+        });
+
+        // Generate one on load
+        document.getElementById('generate').click();
+
+        // --- Feed ---
         let posts = [];
         let currentFilter = 'all';
         let filteredPosts = [];
