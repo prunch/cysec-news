@@ -1,0 +1,41 @@
+[
+  {
+    "id": 1,
+    "author": "The Hacker News",
+    "handle": "@TheHackersNews",
+    "time": "2d ago",
+    "content": "CISA adds two actively exploited Cisco and GitLab flaws to its KEV catalog. GitLab: CVSS 10.0 RCE flaw targeted in an attempted attack on Alpine Linux. Cisco: Firewall flaw can trigger device reloads and DoS. Federal agencies must patch by November 1.",
+    "severity": "critical",
+    "tags": ["vulnerability", "advisory", "CISA", "GitLab", "Cisco"],
+    "likes": 111,
+    "reposts": 20,
+    "link": "https://thehackernews.com",
+    "category": "vulnerability"
+  },
+  {
+    "id": 2,
+    "author": "Threat Intelligence",
+    "handle": "@threatintel",
+    "time": "1d ago",
+    "content": "New Lindnor Backdoor and Glut of Security Killers Used in Ransomware Attack on U.S. Org. Attackers using the Anubis ransomware deployed a new custom backdoor and numerous BYOVD tools.",
+    "severity": "high",
+    "tags": ["ransomware", "backdoor", "BYOVD", "Anubis"],
+    "likes": 4,
+    "reposts": 1,
+    "link": "https://www.security.com/threat-intelligence/lindnor-new-backdoor-anubis-ransomware",
+    "category": "ransomware"
+  },
+  {
+    "id": 3,
+    "author": "The Hacker News",
+    "handle": "@TheHackersNews",
+    "time": "1d ago",
+    "content": "20 New cybersecurity stories worth catching up on. This week's ThreatsDay: Docker AI sandbox escape, Microsoft Entra credential theft, DreamHost password breach, Android banking malware, Ransomware without encryption.",
+    "severity": "high",
+    "tags": ["advisory", "AI", "ransomware", "malware"],
+    "likes": 65,
+    "reposts": 17,
+    "link": "https://thehackernews.com/2026/11/threatsday-apache-ofbiz-rce-dreamhost.html",
+    "category": "advisory"
+  }
+]
